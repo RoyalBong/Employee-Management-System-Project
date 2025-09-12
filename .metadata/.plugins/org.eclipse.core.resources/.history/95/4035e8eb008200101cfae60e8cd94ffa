@@ -1,0 +1,5 @@
+package com.example.employeeservice.entity;
+
+public class Employee {
+
+}

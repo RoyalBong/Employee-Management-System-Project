@@ -1,0 +1,40 @@
+package com.example.departmentservice.service;
+
+import java.util.List;
+import java.util.Optional;
+
+import com.example.departmentservice.entity.Department;
+
+public class DepartmentServiceImpl implements DepartmentService {
+
+	@Override
+	public List<Department> getAllDepartments() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Optional<Department> getDepartmentById(Long id) {
+		// TODO Auto-generated method stub
+		return Optional.empty();
+	}
+
+	@Override
+	public Department createDepartment(Department department) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Department updateDepartment(Long id, Department department) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void deleteDepartment(Long id) {
+		// TODO Auto-generated method stub
+
+	}
+
+}
