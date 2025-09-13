@@ -2,17 +2,17 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')  // Example: if you use Docker Hub creds
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Print Build Number') {
+        stage('Print Build Info') {
             steps {
                 script {
                     echo "Build Number: ${env.BUILD_NUMBER}"
@@ -20,35 +20,47 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                echo "Running build steps..."
-                // Example build command
-                sh 'echo Building the project...'
-            }
-        }
-
-        stage('Push to DockerHub') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    echo "Using DockerHub credentials: ${DOCKERHUB_CREDENTIALS_USR}"
-                    // Example Docker login (replace with your commands)
-                    sh "echo Logging in to DockerHub"
+                    echo "Building Docker image..."
+                    sh "docker build -t shayandutta98/employee-management-system:${env.BUILD_NUMBER} ."
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Push Docker Image to Docker Hub') {
             steps {
-                echo "Deploying application..."
-                // Add your deploy commands here
+                script {
+                    echo "Logging into Docker Hub and pushing image..."
+                    sh """
+                        echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
+                    """
+                    sh "docker push shayandutta98/employee-management-system:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('Deploy Application') {
+            steps {
+                echo "Deploying application locally..."
+
+                script {
+                    sh 'docker stop employee-management-system || true'
+                    sh 'docker rm employee-management-system || true'
+                    sh """
+                        docker run -d --name employee-management-system \
+                        -p 8081:8080 \
+                        shayandutta98/employee-management-system:${env.BUILD_NUMBER}
+                    """
+                }
             }
         }
     }
 
     post {
         always {
-            echo "Build finished. Build number was ${env.BUILD_NUMBER}"
+            echo "Build #${env.BUILD_NUMBER} finished."
         }
     }
 }
