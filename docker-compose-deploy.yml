@@ -1,57 +1,66 @@
-version: '3.8'
 services:
   employee-service:
     image: shayandutta98/employee-service:${BUILD_NUMBER}
     ports:
       - "8081:8081"
-    depends_on:
-      - mysql
-      - rabbitmq
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/emsdb?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/empdb
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - ems-network
   department-service:
     image: shayandutta98/department-service:${BUILD_NUMBER}
     ports:
       - "8082:8082"
-    depends_on:
-      - mysql
-      - rabbitmq
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/deptdb?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/deptdb
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - ems-network
   mysql:
-    image: mysql:8.0
+    image: mysql:latest
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=emsdb
-      - MYSQL_DATABASE=deptdb
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./init-mysql.sql:/docker-entrypoint-initdb.d/init-mysql.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - ems-network
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:management
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - ems-network
+volumes:
+  mysql-data:
 networks:
   ems-network:
     driver: bridge
-volumes:
-  mysql-data:
