@@ -116,3 +116,19 @@ pipeline {
             }
         }
     }
+
+    post {
+        always {
+            sh "docker rmi ${env.DOCKER_REGISTRY}/employee-service:${env.BUILD_NUMBER} || true"
+            sh "docker rmi ${env.DOCKER_REGISTRY}/department-service:${env.BUILD_NUMBER} || true"
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs.'
+            sh 'docker-compose -f docker-compose-deploy.yml down || true'
+        }
+    }
+}
