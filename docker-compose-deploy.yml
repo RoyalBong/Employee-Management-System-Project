@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   employee-service:
-    image: royalborg/employee-service:${BUILD_NUMBER}
+    image: shayandutta98/employee-service:${BUILD_NUMBER}
     ports:
       - "8081:8081"
     depends_on:
@@ -10,12 +10,12 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/emsdb?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=yourpassword
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
     networks:
       - ems-network
   department-service:
-    image: royalborg/department-service:${BUILD_NUMBER}
+    image: shayandutta98/department-service:${BUILD_NUMBER}
     ports:
       - "8082:8082"
     depends_on:
@@ -24,7 +24,7 @@ services:
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/deptdb?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=yourpassword
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
     networks:
       - ems-network
