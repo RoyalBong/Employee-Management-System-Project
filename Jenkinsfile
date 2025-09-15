@@ -1,17 +1,21 @@
 pipeline {
-    agent any  // Requires Maven, JDK 17, Docker, and docker-compose
+    agent any  
+    tools {
+        maven 'Maven'  
+        jdk 'JDK17'    
+    }
 
     environment {
-        DOCKER_REGISTRY = 'shayandutta98'  // Your Docker Hub username
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')  // Your credential ID
-        MYSQL_PASSWORD = credentials('mysql-password')  // For MySQL
+        DOCKER_REGISTRY = 'shayandutta98' 
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')  
+        MYSQL_PASSWORD = credentials('mysql-password') 
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                checkout scm  // Pulls from GitHub
+                checkout scm  
             }
         }
 
@@ -90,7 +94,7 @@ pipeline {
                 script {
                     sh 'docker-compose -f docker-compose-deploy.yml down || true'
                     sh 'docker-compose -f docker-compose-deploy.yml up -d'
-                    sh 'sleep 30'  // Wait for services to stabilize
+                    sh 'sleep 30'  
                     sh 'curl --fail http://localhost:8081/actuator/health || exit 1'
                     sh 'curl --fail http://localhost:8082/actuator/health || exit 1'
                     sh 'curl --fail http://localhost:15672 || exit 1'  // RabbitMQ UI
@@ -105,7 +109,7 @@ pipeline {
 
         stage('Deploy Application') {
             when {
-                branch 'main'  // Deploy only on main branch
+                branch 'main'  
             }
             steps {
                 script {
