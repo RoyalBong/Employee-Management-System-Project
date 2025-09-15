@@ -1,19 +1,24 @@
 pipeline {
-    agent any
+    agent {
+        docker { 
+            image 'docker:20.10' 
+            args '-v /var/run/docker.sock:/var/run/docker.sock' 
+        }
+    }
     tools {
-        maven 'Maven3' 
-        jdk 'Oracle JDK17' 
+        maven 'Maven3'
+        jdk 'Oracle JDK17'
     }
     environment {
-        DOCKER_REGISTRY = 'shayandutta98' 
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id') 
-        MYSQL_PASSWORD = credentials('mysql-password') 
+        DOCKER_REGISTRY = 'shayandutta98'
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')
+        MYSQL_PASSWORD = credentials('mysql-password')
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
     }
     stages {
         stage('Checkout Code') {
             steps {
-                checkout scm 
+                checkout scm
             }
         }
         stage('Build Services') {
@@ -21,7 +26,7 @@ pipeline {
                 stage('Employee Service') {
                     steps {
                         dir('employee-service') {
-                            sh 'mvn clean install -DskipTests' 
+                            sh 'mvn clean install -DskipTests'
                         }
                     }
                     post {
@@ -35,7 +40,7 @@ pipeline {
                 stage('Department Service') {
                     steps {
                         dir('department-service') {
-                            sh 'mvn clean install -DskipTests' 
+                            sh 'mvn clean install -DskipTests'
                         }
                     }
                     post {
@@ -81,12 +86,12 @@ pipeline {
         stage('Integration Test with Docker Compose') {
             steps {
                 script {
-                    sh 'docker compose -f docker-compose-deploy.yml down || true' 
+                    sh 'docker compose -f docker-compose-deploy.yml down || true'
                     sh 'docker compose -f docker-compose-deploy.yml up -d'
-                    sh 'sleep 60' 
-                    sh 'curl --fail http://localhost:8081/actuator/health || exit 1' 
-                    sh 'curl --fail http://localhost:8082/actuator/health || exit 1' 
-                    sh 'curl --fail http://localhost:15672 || exit 1' 
+                    sh 'sleep 120' // Increased wait time
+                    sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:8081/actuator/health || exit 1'
+                    sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:8082/actuator/health || exit 1'
+                    sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:15672 || exit 1'
                 }
             }
             post {
@@ -110,6 +115,7 @@ pipeline {
     }
     post {
         always {
+            sh 'docker compose -f docker-compose-deploy.yml down || true'
             sh "docker rmi ${DOCKER_REGISTRY}/employee-service:${BUILD_NUMBER} || true"
             sh "docker rmi ${DOCKER_REGISTRY}/department-service:${BUILD_NUMBER} || true"
             cleanWs()
@@ -119,7 +125,6 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs.'
-            sh 'docker compose -f docker-compose-deploy.yml down || true'
         }
     }
 }
