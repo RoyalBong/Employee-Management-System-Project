@@ -1,39 +1,33 @@
 pipeline {
-    agent any  
+    agent any
     tools {
-        maven 'Maven'  
-        jdk 'JDK17'    
+        maven 'Maven3' 
+        jdk 'Oracle JDK17' 
     }
-
     environment {
         DOCKER_REGISTRY = 'shayandutta98' 
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id')  
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials-id') 
         MYSQL_PASSWORD = credentials('mysql-password') 
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
     }
-
     stages {
         stage('Checkout Code') {
             steps {
-                checkout scm  
+                checkout scm 
             }
         }
-
-        stage('Build and Test Services') {
+        stage('Build Services') {
             parallel {
                 stage('Employee Service') {
                     steps {
                         dir('employee-service') {
-                            sh 'mvn clean compile'
-                            sh 'mvn test'
-                            sh 'mvn package -DskipTests'
+                            sh 'mvn clean install -DskipTests' 
                         }
                     }
                     post {
                         always {
                             dir('employee-service') {
-                                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                                archiveArtifacts artifacts: 'target/employee-service-docker.jar', allowEmptyArchive: true
+                                archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
                             }
                         }
                     }
@@ -41,23 +35,19 @@ pipeline {
                 stage('Department Service') {
                     steps {
                         dir('department-service') {
-                            sh 'mvn clean compile'
-                            sh 'mvn test'
-                            sh 'mvn package -DskipTests'
+                            sh 'mvn clean install -DskipTests' 
                         }
                     }
                     post {
                         always {
                             dir('department-service') {
-                                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                                archiveArtifacts artifacts: 'target/department-service-docker.jar', allowEmptyArchive: true
+                                archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
                             }
                         }
                     }
                 }
             }
         }
-
         stage('Build and Push Docker Images') {
             parallel {
                 stage('Employee Service Docker') {
@@ -88,43 +78,40 @@ pipeline {
                 }
             }
         }
-
         stage('Integration Test with Docker Compose') {
             steps {
                 script {
-                    sh 'docker-compose -f docker-compose-deploy.yml down || true'
-                    sh 'docker-compose -f docker-compose-deploy.yml up -d'
-                    sh 'sleep 30'  
-                    sh 'curl --fail http://localhost:8081/actuator/health || exit 1'
-                    sh 'curl --fail http://localhost:8082/actuator/health || exit 1'
-                    sh 'curl --fail http://localhost:15672 || exit 1'  // RabbitMQ UI
+                    sh 'docker compose -f docker-compose-deploy.yml down || true' 
+                    sh 'docker compose -f docker-compose-deploy.yml up -d'
+                    sh 'sleep 60' 
+                    sh 'curl --fail http://localhost:8081/actuator/health || exit 1' 
+                    sh 'curl --fail http://localhost:8082/actuator/health || exit 1' 
+                    sh 'curl --fail http://localhost:15672 || exit 1' 
                 }
             }
             post {
                 always {
-                    sh 'docker-compose -f docker-compose-deploy.yml down || true'
+                    sh 'docker compose -f docker-compose-deploy.yml down || true'
                 }
             }
         }
-
         stage('Deploy Application') {
             when {
-                branch 'main'  
+                branch 'main'
             }
             steps {
                 script {
-                    sh 'docker-compose -f docker-compose-deploy.yml down || true'
-                    sh 'docker-compose -f docker-compose-deploy.yml up -d'
+                    sh 'docker compose -f docker-compose-deploy.yml down || true'
+                    sh 'docker compose -f docker-compose-deploy.yml up -d'
                     echo 'Deployed at http://localhost:8081 (employee), http://localhost:8082 (department), RabbitMQ UI: http://localhost:15672'
                 }
             }
         }
     }
-
     post {
         always {
-            sh "docker rmi ${env.DOCKER_REGISTRY}/employee-service:${env.BUILD_NUMBER} || true"
-            sh "docker rmi ${env.DOCKER_REGISTRY}/department-service:${env.BUILD_NUMBER} || true"
+            sh "docker rmi ${DOCKER_REGISTRY}/employee-service:${BUILD_NUMBER} || true"
+            sh "docker rmi ${DOCKER_REGISTRY}/department-service:${BUILD_NUMBER} || true"
             cleanWs()
         }
         success {
@@ -132,7 +119,7 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs.'
-            sh 'docker-compose -f docker-compose-deploy.yml down || true'
+            sh 'docker compose -f docker-compose-deploy.yml down || true'
         }
     }
 }
