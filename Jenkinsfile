@@ -1,13 +1,9 @@
 pipeline {
     agent {
         docker { 
-            image 'docker:20.10' 
-            args '-v /var/run/docker.sock:/var/run/docker.sock' 
+            image 'shayandutta98/jenkins-agent:latest' 
+            args '-v /var/run/docker.sock:/var/run/docker.sock --group-add docker' 
         }
-    }
-    tools {
-        maven 'Maven3'
-        jdk 'Oracle JDK17'
     }
     environment {
         DOCKER_REGISTRY = 'shayandutta98'
@@ -88,7 +84,7 @@ pipeline {
                 script {
                     sh 'docker compose -f docker-compose-deploy.yml down || true'
                     sh 'docker compose -f docker-compose-deploy.yml up -d'
-                    sh 'sleep 120' // Increased wait time
+                    sh 'sleep 120'
                     sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:8081/actuator/health || exit 1'
                     sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:8082/actuator/health || exit 1'
                     sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:15672 || exit 1'
