@@ -1,8 +1,11 @@
+cat > Jenkinsfile << EOF
 pipeline {
     agent {
         docker { 
             image 'shayandutta98/jenkins-agent:latest' 
-            args '-v /var/run/docker.sock:/var/run/docker.sock --group-add docker' 
+            args '-v /var/run/docker.sock:/var/run/docker.sock --group-add 999' 
+            registryUrl 'https://index.docker.io/v1/'
+            registryCredentialsId 'dockerhub-credentials-id'
         }
     }
     environment {
@@ -82,17 +85,17 @@ pipeline {
         stage('Integration Test with Docker Compose') {
             steps {
                 script {
-                    sh 'docker compose -f docker-compose-deploy.yml down || true'
-                    sh 'docker compose -f docker-compose-deploy.yml up -d'
+                    sh 'docker-compose -f docker-compose-deploy.yml down || true'
+                    sh 'docker-compose -f docker-compose-deploy.yml up -d'
                     sh 'sleep 120'
-                    sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:8081/actuator/health || exit 1'
-                    sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:8082/actuator/health || exit 1'
-                    sh 'curl --fail --retry 3 --retry-delay 5 http://localhost:15672 || exit 1'
+                    sh 'curl --fail --retry 3 --retry-delay 5 http://employee-service:8081/actuator/health || exit 1'
+                    sh 'curl --fail --retry 3 --retry-delay 5 http://department-service:8082/actuator/health || exit 1'
+                    sh 'curl --fail --retry 3 --retry-delay 5 http://rabbitmq:15672 || exit 1'
                 }
             }
             post {
                 always {
-                    sh 'docker compose -f docker-compose-deploy.yml down || true'
+                    sh 'docker-compose -f docker-compose-deploy.yml down || true'
                 }
             }
         }
@@ -102,8 +105,8 @@ pipeline {
             }
             steps {
                 script {
-                    sh 'docker compose -f docker-compose-deploy.yml down || true'
-                    sh 'docker compose -f docker-compose-deploy.yml up -d'
+                    sh 'docker-compose -f docker-compose-deploy.yml down || true'
+                    sh 'docker-compose -f docker-compose-deploy.yml up -d'
                     echo 'Deployed at http://localhost:8081 (employee), http://localhost:8082 (department), RabbitMQ UI: http://localhost:15672'
                 }
             }
@@ -111,10 +114,12 @@ pipeline {
     }
     post {
         always {
-            sh 'docker compose -f docker-compose-deploy.yml down || true'
-            sh "docker rmi ${DOCKER_REGISTRY}/employee-service:${BUILD_NUMBER} || true"
-            sh "docker rmi ${DOCKER_REGISTRY}/department-service:${BUILD_NUMBER} || true"
-            cleanWs()
+            node('master') {
+                sh 'docker-compose -f docker-compose-deploy.yml down || true'
+                sh "docker rmi ${DOCKER_REGISTRY}/employee-service:${BUILD_NUMBER} || true"
+                sh "docker rmi ${DOCKER_REGISTRY}/department-service:${BUILD_NUMBER} || true"
+                cleanWs()
+            }
         }
         success {
             echo 'Pipeline completed successfully!'
@@ -124,3 +129,4 @@ pipeline {
         }
     }
 }
+EOF
