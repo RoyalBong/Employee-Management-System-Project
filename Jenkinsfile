@@ -1,4 +1,4 @@
-cat > Jenkinsfile << EOF
+
 pipeline {
     agent {
         docker { 
